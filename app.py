@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from src.detectors import run_all_detectors
+from src.ml_pipeline import create_ml_ready_dataset, generate_pipeline_code
 from src.preprocessor import create_cleaned_dataset
 from src.profiler import build_column_report, calculate_readiness_score
 from src.recommender import build_recommendations
@@ -105,3 +106,62 @@ st.download_button(
     mime="text/csv",
     type="primary",
 )
+
+st.subheader("Build the ML-ready dataset")
+if selected_target is None:
+    st.info("Select a target column above to build the Scikit-learn pipeline.")
+else:
+    try:
+        pipeline_result = create_ml_ready_dataset(df, selected_target)
+    except ValueError as error:
+        st.warning(str(error))
+    else:
+        st.write(
+            "The pipeline imputes numeric values, scales numeric features, "
+            "one-hot encodes categories, and preserves the target column."
+        )
+
+        summary_1, summary_2, summary_3 = st.columns(3)
+        summary_1.metric("Numeric features", len(pipeline_result.numeric_columns))
+        summary_2.metric(
+            "Categorical features", len(pipeline_result.categorical_columns)
+        )
+        summary_3.metric(
+            "ML-ready columns", pipeline_result.transformed_data.shape[1]
+        )
+
+        if pipeline_result.removed_columns:
+            st.caption(
+                "Removed constant features: "
+                + ", ".join(pipeline_result.removed_columns)
+            )
+        if pipeline_result.dropped_target_rows:
+            st.caption(
+                f"Dropped {pipeline_result.dropped_target_rows} row(s) with a "
+                "missing target because a model cannot learn their correct label."
+            )
+
+        with st.expander("Preview transformed data"):
+            st.dataframe(
+                pipeline_result.transformed_data.head(20),
+                use_container_width=True,
+            )
+
+        ml_ready_csv = pipeline_result.transformed_data.to_csv(index=False).encode(
+            "utf-8"
+        )
+        pipeline_code = generate_pipeline_code(selected_target)
+
+        download_1, download_2 = st.columns(2)
+        download_1.download_button(
+            "Download ML-ready CSV",
+            data=ml_ready_csv,
+            file_name="data_doctor_ml_ready.csv",
+            mime="text/csv",
+        )
+        download_2.download_button(
+            "Download reusable pipeline code",
+            data=pipeline_code,
+            file_name="data_doctor_pipeline.py",
+            mime="text/x-python",
+        )

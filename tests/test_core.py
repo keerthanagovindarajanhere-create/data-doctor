@@ -7,6 +7,7 @@ from src.detectors import (
     detect_outliers,
     detect_rare_categories,
 )
+from src.ml_pipeline import create_ml_ready_dataset, generate_pipeline_code
 from src.preprocessor import create_cleaned_dataset
 from src.profiler import build_column_report, calculate_readiness_score
 from src.recommender import build_recommendations
@@ -75,3 +76,26 @@ def test_class_imbalance_detector_uses_selected_target():
     dataframe = pd.DataFrame({"approved": ["yes"] * 95 + ["no"] * 5})
     findings = detect_class_imbalance(dataframe, "approved")
     assert findings[0]["Severity"] == "High"
+
+
+def test_ml_pipeline_creates_numeric_output_and_preserves_target():
+    dataframe = pd.DataFrame(
+        {
+            "age": [20.0, None, 40.0, 50.0],
+            "city": ["Chennai", "Delhi", None, "Chennai"],
+            "constant": ["same"] * 4,
+            "approved": ["yes", "no", "yes", "no"],
+        }
+    )
+    result = create_ml_ready_dataset(dataframe, "approved")
+    features = result.transformed_data.drop(columns=["approved"])
+
+    assert features.isna().sum().sum() == 0
+    assert all(pd.api.types.is_numeric_dtype(features[column]) for column in features)
+    assert result.transformed_data["approved"].tolist() == dataframe["approved"].tolist()
+    assert result.removed_columns == ["constant"]
+
+
+def test_pipeline_code_contains_selected_target():
+    code = generate_pipeline_code("approved")
+    assert "target_column = 'approved'" in code

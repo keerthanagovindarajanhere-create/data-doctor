@@ -3,7 +3,7 @@
 Data Doctor is an explainable dataset preprocessing and ML-readiness platform.
 The current prototype uploads a CSV, profiles its columns, calculates a transparent
 readiness score, detects advanced quality risks, ranks preprocessing recommendations,
-and exports cleaned data.
+and exports cleaned and encoded ML-ready data with reusable Scikit-learn code.
 
 ## Run the project on Windows
 
@@ -46,5 +46,6 @@ src/profiler.py        Dataset profiling and readiness score
 src/detectors.py       Outlier, rarity, correlation, and imbalance detection
 src/recommender.py     Ranked explainable recommendations
 src/preprocessor.py    Approved cleaning transformations
+src/ml_pipeline.py     Reusable Scikit-learn preprocessing pipeline
 tests/test_core.py     Automated tests
 ```

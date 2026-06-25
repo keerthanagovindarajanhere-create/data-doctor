@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+from src.detectors import run_all_detectors
 from src.preprocessor import create_cleaned_dataset
 from src.profiler import build_column_report, calculate_readiness_score
 from src.recommender import build_recommendations
@@ -70,6 +71,18 @@ if target_column != "Not selected":
 st.subheader("Column quality report")
 column_report = build_column_report(df)
 st.dataframe(column_report, use_container_width=True, hide_index=True)
+
+st.subheader("Advanced diagnostic findings")
+selected_target = None if target_column == "Not selected" else target_column
+findings = run_all_detectors(df, selected_target)
+if findings:
+    st.dataframe(pd.DataFrame(findings), use_container_width=True, hide_index=True)
+    st.caption(
+        "These are warnings supported by statistical evidence, not automatic "
+        "instructions to delete data."
+    )
+else:
+    st.success("No outlier, rarity, correlation, or imbalance warnings were detected.")
 
 st.subheader("Explainable recommendations")
 recommendations = build_recommendations(df)

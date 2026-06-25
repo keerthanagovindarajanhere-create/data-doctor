@@ -2,7 +2,8 @@
 
 Data Doctor is an explainable dataset preprocessing and ML-readiness platform.
 The current prototype uploads a CSV, profiles its columns, calculates a transparent
-readiness score, ranks preprocessing recommendations, and exports cleaned data.
+readiness score, detects advanced quality risks, ranks preprocessing recommendations,
+and exports cleaned data.
 
 ## Run the project on Windows
 
@@ -42,6 +43,7 @@ Open it in a browser and upload a CSV file.
 ```text
 app.py                 Streamlit interface
 src/profiler.py        Dataset profiling and readiness score
+src/detectors.py       Outlier, rarity, correlation, and imbalance detection
 src/recommender.py     Ranked explainable recommendations
 src/preprocessor.py    Approved cleaning transformations
 tests/test_core.py     Automated tests

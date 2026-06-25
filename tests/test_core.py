@@ -1,5 +1,12 @@
 import pandas as pd
 
+from src.detectors import (
+    detect_class_imbalance,
+    detect_high_correlations,
+    detect_near_constant_features,
+    detect_outliers,
+    detect_rare_categories,
+)
 from src.preprocessor import create_cleaned_dataset
 from src.profiler import build_column_report, calculate_readiness_score
 from src.recommender import build_recommendations
@@ -37,3 +44,34 @@ def test_readiness_score_stays_in_range():
     assert 0 <= score <= 100
     assert explanations
 
+
+def test_outlier_detector_finds_extreme_value():
+    dataframe = pd.DataFrame({"amount": list(range(1, 21)) + [1000]})
+    findings = detect_outliers(dataframe)
+    assert findings[0]["Issue"] == "Possible outliers"
+
+
+def test_near_constant_detector_finds_dominant_value():
+    dataframe = pd.DataFrame({"flag": ["no"] * 19 + ["yes"]})
+    findings = detect_near_constant_features(dataframe)
+    assert findings[0]["Column(s)"] == "flag"
+
+
+def test_rare_category_detector_finds_small_group():
+    dataframe = pd.DataFrame({"city": ["Chennai"] * 100 + ["Pune"]})
+    findings = detect_rare_categories(dataframe)
+    assert findings[0]["Issue"] == "Rare categories"
+
+
+def test_correlation_detector_finds_feature_pair():
+    dataframe = pd.DataFrame(
+        {"distance_km": range(20), "distance_m": [value * 1000 for value in range(20)]}
+    )
+    findings = detect_high_correlations(dataframe)
+    assert findings[0]["Issue"] == "High correlation"
+
+
+def test_class_imbalance_detector_uses_selected_target():
+    dataframe = pd.DataFrame({"approved": ["yes"] * 95 + ["no"] * 5})
+    findings = detect_class_imbalance(dataframe, "approved")
+    assert findings[0]["Severity"] == "High"

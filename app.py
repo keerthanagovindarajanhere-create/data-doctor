@@ -6,6 +6,7 @@ from src.ml_pipeline import create_ml_ready_dataset, generate_pipeline_code
 from src.preprocessor import create_cleaned_dataset
 from src.profiler import build_column_report, calculate_readiness_score
 from src.recommender import build_recommendations
+from src.validator import is_classification_target, validate_classification
 
 
 st.set_page_config(page_title="Data Doctor", page_icon="DD", layout="wide")
@@ -111,11 +112,22 @@ st.subheader("Build the ML-ready dataset")
 if selected_target is None:
     st.info("Select a target column above to build the Scikit-learn pipeline.")
 else:
-    try:
-        pipeline_result = create_ml_ready_dataset(df, selected_target)
-    except ValueError as error:
-        st.warning(str(error))
-    else:
+    st.write(
+        "Data Doctor will remove identifier-like columns, limit categorical "
+        "expansion, and check estimated memory before creating the file."
+    )
+    if st.button("Build ML-ready dataset"):
+        try:
+            pipeline_result = create_ml_ready_dataset(df, selected_target)
+        except (ValueError, MemoryError) as error:
+            st.warning(str(error))
+        else:
+            st.session_state["pipeline_result"] = pipeline_result
+            st.session_state["pipeline_target"] = selected_target
+
+    pipeline_result = st.session_state.get("pipeline_result")
+    pipeline_target = st.session_state.get("pipeline_target")
+    if pipeline_result is not None and pipeline_target == selected_target:
         st.write(
             "The pipeline imputes numeric values, scales numeric features, "
             "one-hot encodes categories, and preserves the target column."
@@ -134,6 +146,11 @@ else:
             st.caption(
                 "Removed constant features: "
                 + ", ".join(pipeline_result.removed_columns)
+            )
+        if pipeline_result.high_cardinality_columns:
+            st.caption(
+                "Excluded identifier-like or extremely high-cardinality columns: "
+                + ", ".join(pipeline_result.high_cardinality_columns)
             )
         if pipeline_result.dropped_target_rows:
             st.caption(
@@ -165,3 +182,42 @@ else:
             file_name="data_doctor_pipeline.py",
             mime="text/x-python",
         )
+
+        st.subheader("Validate preprocessing with ML models")
+        if not is_classification_target(df[selected_target]):
+            st.info(
+                "This validation milestone currently supports classification targets. "
+                "Regression validation will be added next."
+            )
+        elif st.button("Run classification validation", type="primary"):
+            with st.spinner(
+                "Training baseline models across multiple folds. This can take a minute..."
+            ):
+                try:
+                    validation = validate_classification(df, selected_target)
+                except ValueError as error:
+                    st.warning(str(error))
+                except Exception as error:
+                    st.error(f"Validation could not finish: {error}")
+                else:
+                    st.success(
+                        f"Compared both approaches using {validation.folds}-fold "
+                        f"cross-validation on {validation.rows_used:,} rows."
+                    )
+                    st.dataframe(
+                        validation.metrics,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                    chart_data = validation.metrics.pivot(
+                        index="Model",
+                        columns="Approach",
+                        values="F1",
+                    )
+                    st.write("F1-score comparison")
+                    st.bar_chart(chart_data)
+                    st.caption(
+                        "A higher score is better, but small differences may be normal "
+                        "cross-validation variation rather than a real improvement."
+                    )

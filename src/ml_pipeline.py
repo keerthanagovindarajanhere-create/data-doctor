@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -18,6 +19,7 @@ class PipelineResult:
     numeric_columns: list[str]
     categorical_columns: list[str]
     removed_columns: list[str]
+    high_cardinality_columns: list[str]
     dropped_target_rows: int
 
 
@@ -40,7 +42,13 @@ def _split_numeric_strategies(
 
 def build_preprocessing_pipeline(
     features: pd.DataFrame,
-) -> tuple[ColumnTransformer, list[str], list[str], list[str]]:
+) -> tuple[
+    ColumnTransformer,
+    list[str],
+    list[str],
+    list[str],
+    list[str],
+]:
     """Create an unfitted Scikit-learn transformer from feature characteristics."""
     constant_columns = [
         column for column in features.columns if features[column].nunique() <= 1
@@ -49,6 +57,28 @@ def build_preprocessing_pipeline(
 
     numeric_columns = usable_features.select_dtypes(include="number").columns.tolist()
     categorical_columns = usable_features.select_dtypes(exclude="number").columns.tolist()
+    high_cardinality_columns = [
+        column
+        for column in categorical_columns
+        if (
+            usable_features[column].nunique(dropna=True) > 5_000
+            or (
+                usable_features[column].nunique(dropna=True) > 100
+                and usable_features[column].nunique(dropna=True)
+                / max(usable_features[column].notna().sum(), 1)
+                > 0.95
+            )
+        )
+    ]
+    usable_features = usable_features.drop(columns=high_cardinality_columns)
+    categorical_columns = [
+        column
+        for column in categorical_columns
+        if column not in high_cardinality_columns
+    ]
+    numeric_columns = [
+        column for column in numeric_columns if column in usable_features.columns
+    ]
     median_columns, mean_columns = _split_numeric_strategies(
         usable_features, numeric_columns
     )
@@ -94,7 +124,10 @@ def build_preprocessing_pipeline(
                             "encoder",
                             OneHotEncoder(
                                 handle_unknown="ignore",
+                                min_frequency=2,
+                                max_categories=50,
                                 sparse_output=False,
+                                dtype=np.float32,
                             ),
                         ),
                     ]
@@ -111,7 +144,13 @@ def build_preprocessing_pipeline(
         remainder="drop",
         verbose_feature_names_out=False,
     )
-    return pipeline, numeric_columns, categorical_columns, constant_columns
+    return (
+        pipeline,
+        numeric_columns,
+        categorical_columns,
+        constant_columns,
+        high_cardinality_columns,
+    )
 
 
 def create_ml_ready_dataset(
@@ -128,10 +167,32 @@ def create_ml_ready_dataset(
     target = prepared[target_column].reset_index(drop=True)
     features = prepared.drop(columns=[target_column])
 
-    pipeline, numeric_columns, categorical_columns, removed_columns = (
+    (
+        pipeline,
+        numeric_columns,
+        categorical_columns,
+        removed_columns,
+        high_cardinality_columns,
+    ) = (
         build_preprocessing_pipeline(features)
     )
-    transformed = pipeline.fit_transform(features)
+    safe_features = features.drop(
+        columns=removed_columns + high_cardinality_columns,
+        errors="ignore",
+    )
+
+    maximum_encoded_columns = len(numeric_columns) + 50 * len(categorical_columns)
+    estimated_bytes = len(safe_features) * maximum_encoded_columns * 4
+    memory_limit = 512 * 1024 * 1024
+    if estimated_bytes > memory_limit:
+        estimated_gib = estimated_bytes / (1024**3)
+        raise ValueError(
+            "The encoded dataset could require up to "
+            f"{estimated_gib:.1f} GiB of memory. Reduce the number of columns "
+            "or rows before creating a dense CSV."
+        )
+
+    transformed = pipeline.fit_transform(safe_features)
     feature_names = pipeline.get_feature_names_out()
 
     transformed_data = pd.DataFrame(transformed, columns=feature_names)
@@ -143,6 +204,7 @@ def create_ml_ready_dataset(
         numeric_columns=numeric_columns,
         categorical_columns=categorical_columns,
         removed_columns=removed_columns,
+        high_cardinality_columns=high_cardinality_columns,
         dropped_target_rows=dropped_target_rows,
     )
 
@@ -167,6 +229,19 @@ X = X.drop(columns=constant_columns)
 
 numeric_columns = X.select_dtypes(include="number").columns.tolist()
 categorical_columns = X.select_dtypes(exclude="number").columns.tolist()
+high_cardinality_columns = [
+    column for column in categorical_columns
+    if X[column].nunique(dropna=True) > 5000
+    or (
+        X[column].nunique(dropna=True) > 100
+        and X[column].nunique(dropna=True) / max(X[column].notna().sum(), 1) > 0.95
+    )
+]
+X = X.drop(columns=high_cardinality_columns)
+categorical_columns = [
+    column for column in categorical_columns
+    if column not in high_cardinality_columns
+]
 
 numeric_pipeline = Pipeline([
     ("imputer", SimpleImputer(strategy="median")),
@@ -175,7 +250,13 @@ numeric_pipeline = Pipeline([
 
 categorical_pipeline = Pipeline([
     ("imputer", SimpleImputer(strategy="most_frequent")),
-    ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+    ("encoder", OneHotEncoder(
+        handle_unknown="ignore",
+        min_frequency=2,
+        max_categories=50,
+        sparse_output=False,
+        dtype="float32",
+    )),
 ])
 
 preprocessor = ColumnTransformer([
@@ -190,4 +271,3 @@ ml_ready_df[target_column] = y.reset_index(drop=True)
 
 ml_ready_df.to_csv("ml_ready_dataset.csv", index=False)
 '''
-

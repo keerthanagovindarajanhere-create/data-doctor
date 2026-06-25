@@ -11,6 +11,7 @@ from src.ml_pipeline import create_ml_ready_dataset, generate_pipeline_code
 from src.preprocessor import create_cleaned_dataset
 from src.profiler import build_column_report, calculate_readiness_score
 from src.recommender import build_recommendations
+from src.validator import is_classification_target, validate_classification
 
 
 def sample_dataframe() -> pd.DataFrame:
@@ -94,8 +95,46 @@ def test_ml_pipeline_creates_numeric_output_and_preserves_target():
     assert all(pd.api.types.is_numeric_dtype(features[column]) for column in features)
     assert result.transformed_data["approved"].tolist() == dataframe["approved"].tolist()
     assert result.removed_columns == ["constant"]
+    assert result.high_cardinality_columns == []
+
+
+def test_ml_pipeline_excludes_identifier_like_text_column():
+    dataframe = pd.DataFrame(
+        {
+            "record_id": [f"ID-{value}" for value in range(200)],
+            "city": ["Chennai", "Delhi"] * 100,
+            "approved": ["yes", "no"] * 100,
+        }
+    )
+    result = create_ml_ready_dataset(dataframe, "approved")
+
+    assert result.high_cardinality_columns == ["record_id"]
+    assert not any(
+        column.startswith("record_id")
+        for column in result.transformed_data.columns
+    )
 
 
 def test_pipeline_code_contains_selected_target():
     code = generate_pipeline_code("approved")
     assert "target_column = 'approved'" in code
+
+
+def test_classification_target_detection():
+    assert is_classification_target(pd.Series(["yes"] * 30 + ["no"] * 30))
+    assert not is_classification_target(pd.Series(range(100)))
+
+
+def test_validation_compares_both_preprocessing_approaches():
+    dataframe = pd.DataFrame(
+        {
+            "age": list(range(20, 80)),
+            "city": ["Chennai", "Delhi", "Pune"] * 20,
+            "approved": ["yes", "no"] * 30,
+        }
+    )
+    result = validate_classification(dataframe, "approved", requested_folds=2)
+
+    assert len(result.metrics) == 4
+    assert set(result.metrics["Approach"]) == {"Minimal baseline", "Data Doctor"}
+    assert {"Accuracy", "F1", "ROC-AUC"}.issubset(result.metrics.columns)

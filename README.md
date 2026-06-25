@@ -1,8 +1,8 @@
 # Data Doctor
 
-Data Doctor is a beginner-friendly intelligent dataset preprocessing project.
-Version 0.1 uploads a CSV, profiles its columns, explains basic preprocessing
-recommendations, and exports a cleaned dataset.
+Data Doctor is an explainable dataset preprocessing and ML-readiness platform.
+The current prototype uploads a CSV, profiles its columns, calculates a transparent
+readiness score, ranks preprocessing recommendations, and exports cleaned data.
 
 ## Run the project on Windows
 
@@ -14,35 +14,35 @@ Open this folder in VS Code, then open **Terminal → New Terminal**.
 python -m venv .venv
 ```
 
-### 2. Activate it
+### 2. Install the libraries
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-The terminal prompt should now begin with `(.venv)`.
+This direct command also works when PowerShell blocks environment activation.
 
-### 3. Install the libraries
+### 3. Start the app
 
 ```powershell
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-### 4. Start the app
+### 4. Run the automated tests
 
 ```powershell
-python -m streamlit run app.py
+.\.venv\Scripts\python.exe -m pytest
 ```
 
 Streamlit will print a local address, usually `http://localhost:8501`.
 Open it in a browser and upload a CSV file.
 
-## What version 0.1 teaches
+## Current project structure
 
-- Reading CSV data with Pandas
-- Working with DataFrames
-- Identifying missing and duplicate data
-- Distinguishing numeric and categorical columns
-- Building explainable preprocessing rules
-- Creating a simple Streamlit user interface
-
+```text
+app.py                 Streamlit interface
+src/profiler.py        Dataset profiling and readiness score
+src/recommender.py     Ranked explainable recommendations
+src/preprocessor.py    Approved cleaning transformations
+tests/test_core.py     Automated tests
+```

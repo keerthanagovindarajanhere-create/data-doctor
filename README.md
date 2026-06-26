@@ -1,107 +1,140 @@
-# Data Doctor
+# 🩺 Data Doctor
 
-**An explainable dataset preprocessing and ML-readiness platform.**
+**Data Doctor** is an intelligent dataset diagnosis and preprocessing platform that helps data scientists, students, and machine learning practitioners analyze dataset quality, identify issues, prepare data for modeling, and validate preprocessing pipelines—all through an interactive Streamlit interface.
 
-Data Doctor diagnoses tabular data, ranks evidence-backed preprocessing
-recommendations, produces human-readable and ML-ready exports, and verifies the
-impact through leakage-safe model validation.
+Instead of only cleaning datasets, Data Doctor explains **what is wrong, why it matters, and how it affects machine learning performance**, making preprocessing more transparent and explainable.
 
-## Highlights
+---
 
-- Missingness, duplicates, outliers, skew, rare categories, near-constant features,
-  class imbalance, and high-correlation detection
-- Transparent 0–100 readiness score
-- Ranked recommendations with reasons
-- Memory-safe categorical encoding and identifier detection
-- Classification and regression validation
-- Logistic/linear and random-forest baselines
-- Accuracy, precision, recall, F1, ROC-AUC, MAE, RMSE, R², and timing metrics
-- Clean CSV, ML-ready CSV, reusable Scikit-learn code, HTML report, and JSON report
-- Docker and GitHub Actions support
+## ✨ Features
 
-## How it works
+### 📊 Dataset Profiling
 
-```text
-Upload CSV
-  → Profile and diagnose
-  → Review recommendations
-  → Export cleaned or ML-ready data
-  → Validate baseline vs Data Doctor
-  → Download reproducible report and pipeline
+* Comprehensive dataset overview
+* Missing value analysis
+* Duplicate detection
+* Column profiling
+* ML readiness score
+
+### 🔍 Intelligent Diagnostics
+
+* Outlier detection (IQR-based)
+* Rare category detection
+* High correlation analysis
+* Near-constant feature detection
+* Class imbalance detection
+
+### 💡 Explainable Recommendations
+
+* Priority-ranked preprocessing suggestions
+* Severity classification
+* Evidence-backed reasoning
+* Human-readable explanations
+
+### 🧹 Automated Preprocessing
+
+* Missing value imputation
+* Duplicate removal
+* Constant feature removal
+* ML-ready feature transformation
+* Safe handling of high-cardinality categorical features
+
+### 🤖 Machine Learning Validation
+
+* Automatic task inference (Classification/Regression)
+* Leakage-safe preprocessing pipelines
+* Cross-validation benchmarking
+* Baseline vs Data Doctor comparison
+* Performance metrics including Accuracy, Precision, Recall, F1, ROC-AUC, MAE, RMSE and R²
+
+### 📦 Export Options
+
+* Cleaned dataset
+* ML-ready dataset
+* Reusable Scikit-learn preprocessing pipeline
+* HTML analysis report
+* JSON report
+
+---
+
+## 🛠 Tech Stack
+
+* Python
+* Streamlit
+* Pandas
+* NumPy
+* Scikit-learn
+* HTML/CSS
+* Git & GitHub
+
+---
+
+## 🏗 Architecture
+
+Data Doctor is designed as a modular application.
+
+```
+app.py
+│
+├── profiler.py
+├── detectors.py
+├── recommender.py
+├── preprocessor.py
+├── ml_pipeline.py
+├── validator.py
+├── reporting.py
+└── ...
 ```
 
-All preprocessing used during validation is fitted inside each training fold to
-avoid data leakage.
+Each module is responsible for a single stage of the data preparation workflow, making the project scalable and easy to maintain.
 
-## Run the project on Windows
+---
 
-Open this folder in VS Code, then open **Terminal → New Terminal**.
+## 🚀 Workflow
 
-### 1. Create a virtual environment
+1. Upload a CSV dataset
+2. Profile dataset quality
+3. Detect statistical issues
+4. Generate preprocessing recommendations
+5. Create a cleaned dataset
+6. Build an ML-ready dataset
+7. Validate preprocessing using machine learning models
+8. Export reports and reusable artifacts
 
-```powershell
-python -m venv .venv
-```
+---
 
-### 2. Install the libraries
+## 🎯 Why Data Doctor?
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
+Most dataset profiling tools only describe the data.
 
-This direct command also works when PowerShell blocks environment activation.
+**Data Doctor goes a step further** by combining profiling, explainable diagnostics, preprocessing recommendations, ML pipeline generation, and validation into a single end-to-end workflow designed for real machine learning projects.
 
-### 3. Start the app
+---
 
-```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
-```
+## 📸 Screenshots
 
-### 4. Run tests
+> Add screenshots of:
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider
-```
+* Overview Dashboard
+* Diagnostics
+* Preprocessing
+* Validation Results
+* Export Page
 
-Streamlit will print a local address, usually `http://localhost:8501`.
-Open it in a browser and upload a CSV file.
+---
 
-## Project structure
+## 🔮 Future Improvements
 
-```text
-app.py                 Streamlit interface
-src/profiler.py        Dataset profiling and readiness score
-src/detectors.py       Outlier, rarity, correlation, and imbalance detection
-src/recommender.py     Ranked explainable recommendations
-src/preprocessor.py    Approved cleaning transformations
-src/ml_pipeline.py     Reusable Scikit-learn preprocessing pipeline
-src/validator.py       Baseline-versus-processed ML validation
-src/reporting.py       Portable HTML and JSON reports
-tests/test_core.py     Automated tests
-.github/workflows/     Continuous integration
-Dockerfile             Reproducible deployment container
-```
+* Dataset Quality Certification
+* Feature Importance Analysis
+* Enhanced Model Recommendation Engine
+* Professional PDF Reports
+* Interactive Visual Analytics
 
-## Docker
+---
 
-```powershell
-docker build -t data-doctor .
-docker run -p 8501:8501 data-doctor
-```
+## 👩‍💻 Author
 
-## Deployment
+**Keerthana G**
 
-The simplest hosted path is Streamlit Community Cloud:
-
-1. Sign in with GitHub at `share.streamlit.io`.
-2. Select this repository and the `main` branch.
-3. Set the main file to `app.py`.
-4. Deploy and add the generated URL to the GitHub repository description.
-
-Render or Railway can deploy the included Dockerfile when more control is needed.
-
-## Current scope
-
-The production-ready portfolio release supports CSV-based tabular classification
-and regression. Time-series, distributed processing, authentication, and persistent
-project history are planned extensions rather than hidden partial features.
+If you found this project useful, consider giving it a ⭐ on GitHub!

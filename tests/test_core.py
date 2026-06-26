@@ -11,7 +11,14 @@ from src.ml_pipeline import create_ml_ready_dataset, generate_pipeline_code
 from src.preprocessor import create_cleaned_dataset
 from src.profiler import build_column_report, calculate_readiness_score
 from src.recommender import build_recommendations
-from src.validator import is_classification_target, validate_classification
+from src.reporting import build_report_payload, report_as_html, report_as_json
+from src.validator import (
+    infer_task_type,
+    is_classification_target,
+    recommend_models,
+    validate_classification,
+    validate_regression,
+)
 
 
 def sample_dataframe() -> pd.DataFrame:
@@ -138,3 +145,32 @@ def test_validation_compares_both_preprocessing_approaches():
     assert len(result.metrics) == 4
     assert set(result.metrics["Approach"]) == {"Minimal baseline", "Data Doctor"}
     assert {"Accuracy", "F1", "ROC-AUC"}.issubset(result.metrics.columns)
+
+
+def test_regression_validation_compares_both_approaches():
+    dataframe = pd.DataFrame(
+        {
+            "size": list(range(1, 61)),
+            "city": ["A", "B", "C"] * 20,
+            "price": [value * 12.5 + 30 for value in range(1, 61)],
+        }
+    )
+    result = validate_regression(dataframe, "price", requested_folds=2)
+    assert result.task_type == "regression"
+    assert len(result.metrics) == 4
+    assert {"MAE", "RMSE", "R²"}.issubset(result.metrics.columns)
+
+
+def test_task_and_model_recommendations():
+    dataframe = pd.DataFrame({"x": range(60), "target": [0, 1] * 30})
+    assert infer_task_type(dataframe["target"]) == "classification"
+    assert recommend_models(dataframe, "target")
+
+
+def test_reports_export_html_and_json():
+    dataframe = sample_dataframe()
+    payload = build_report_payload(
+        dataframe, "city", 75, ["-25: sample"], [], [], None
+    )
+    assert "Data Doctor preprocessing report" in report_as_html(payload)
+    assert '"readiness_score": 75' in report_as_json(payload)
